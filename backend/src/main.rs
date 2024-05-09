@@ -40,9 +40,55 @@ struct UpdateTaskStatusRequest {
     task_id: i32,
     new_status: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Subject {
+    id: i32,
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ExamDate {
+    id: i32,
+    subject_id: i32,
+    date: String, // Puedes cambiar el tipo según tus necesidades (por ejemplo, a un tipo de fecha)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Note {
+    id: i32,
+    subject_id: i32,
+    content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct FileLink {
+    id: i32,
+    subject_id: i32,
+    url: String,
+}
+
 #[derive(Debug, Deserialize)]
-struct TaskIdRequest {
-    task_id: i32,
+struct AddSubjectRequest {
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddExamDateRequest {
+    subject_id: i32,
+    date: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddNoteRequest {
+    subject_id: i32,
+    content: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddFileLinkRequest {
+    subject_id: i32,
+    url: String,
 }
 
 async fn register(
@@ -93,17 +139,19 @@ async fn add_task(
         Err(_) => HttpResponse::InternalServerError().body("Error al agregar la tarea"),
     }
 }
+
 async fn delete_task(
-    delete_info: web::Json<TaskIdRequest>,
+    task_id: web::Path<i32>,
     db_conn: web::Data<Arc<Mutex<Connection>>>,
 ) -> impl Responder {
-    let task_id = delete_info.task_id;
+    let id = task_id.into_inner();
 
-    match remove_task(&db_conn, task_id) {
+    match remove_task(&db_conn, id) {
         Ok(_) => HttpResponse::Ok().body("Tarea eliminada exitosamente"),
         Err(_) => HttpResponse::InternalServerError().body("Error al eliminar la tarea"),
     }
 }
+
 fn remove_task(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
     task_id: i32,
@@ -133,6 +181,7 @@ async fn update_task_status(
         _ => HttpResponse::BadRequest().body("Estado de tarea no válido"),
     }
 }
+
 fn modify_task_status(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
     task_id: i32,
@@ -189,6 +238,132 @@ fn insert_task(
     Ok(())
 }
 
+async fn add_subject(
+    add_subject_info: web::Json<AddSubjectRequest>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let name = &add_subject_info.name;
+
+    match insert_subject(&db_conn, name) {
+        Ok(_) => HttpResponse::Ok().body("Materia agregada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al agregar la materia"),
+    }
+}
+
+async fn delete_subject(
+    subject_id: web::Path<i32>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let id = subject_id.into_inner();
+
+    match remove_subject(&db_conn, id) {
+        Ok(_) => HttpResponse::Ok().body("Materia eliminada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al eliminar la materia"),
+    }
+}
+
+fn insert_subject(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    name: &str,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "INSERT INTO subjects (name) VALUES (?1)",
+        &[name],
+    )?;
+    Ok(())
+}
+
+fn remove_subject(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    subject_id: i32,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "DELETE FROM subjects WHERE id = ?1",
+        &[&subject_id.to_string()],
+    )?;
+    Ok(())
+}
+
+async fn add_exam_date(
+    add_exam_date_info: web::Json<AddExamDateRequest>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let subject_id = add_exam_date_info.subject_id;
+    let date = &add_exam_date_info.date;
+
+    match insert_exam_date(&db_conn, subject_id, date) {
+        Ok(_) => HttpResponse::Ok().body("Fecha de examen agregada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al agregar la fecha de examen"),
+    }
+}
+
+fn insert_exam_date(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    subject_id: i32,
+    date: &str,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "INSERT INTO exam_dates (subject_id, date) VALUES (?1, ?2)",
+        &[&subject_id.to_string(), date],
+    )?;
+    Ok(())
+}
+
+async fn add_note(
+    add_note_info: web::Json<AddNoteRequest>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let subject_id = add_note_info.subject_id;
+    let content = &add_note_info.content;
+
+    match insert_note(&db_conn, subject_id, content) {
+        Ok(_) => HttpResponse::Ok().body("Nota agregada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al agregar la nota"),
+    }
+}
+
+fn insert_note(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    subject_id: i32,
+    content: &str,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "INSERT INTO notes (subject_id, content) VALUES (?1, ?2)",
+        &[&subject_id.to_string(), content],
+    )?;
+    Ok(())
+}
+
+async fn add_file_link(
+    add_file_link_info: web::Json<AddFileLinkRequest>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let subject_id = add_file_link_info.subject_id;
+    let url = &add_file_link_info.url;
+
+    match insert_file_link(&db_conn, subject_id, url) {
+        Ok(_) => HttpResponse::Ok().body("Enlace de archivo agregado exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al agregar el enlace de archivo"),
+    }
+}
+
+fn insert_file_link(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    subject_id: i32,
+    url: &str,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "INSERT INTO file_links (subject_id, url) VALUES (?1, ?2)",
+        &[&subject_id.to_string(), url],
+    )?;
+    Ok(())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let db_path = "classmate.db";
@@ -222,6 +397,64 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to create tasks table.");
     }
 
+    // Crear tabla de materias si no existe
+    {
+        let mut conn = db_conn.lock().unwrap();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS subjects (
+                 id INTEGER PRIMARY KEY,
+                 name TEXT NOT NULL
+             )",
+            [],
+        )
+        .expect("Failed to create subjects table.");
+    }
+
+    // Crear tabla de fechas de exámenes si no existe
+    {
+        let mut conn = db_conn.lock().unwrap();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS exam_dates (
+                 id INTEGER PRIMARY KEY,
+                 subject_id INTEGER NOT NULL,
+                 date TEXT NOT NULL,
+                 FOREIGN KEY (subject_id) REFERENCES subjects(id)
+             )",
+            [],
+        )
+        .expect("Failed to create exam_dates table.");
+    }
+
+    // Crear tabla de notas si no existe
+    {
+        let mut conn = db_conn.lock().unwrap();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS notes (
+                 id INTEGER PRIMARY KEY,
+                 subject_id INTEGER NOT NULL,
+                 content TEXT NOT NULL,
+                 FOREIGN KEY (subject_id) REFERENCES subjects(id)
+             )",
+            [],
+        )
+        .expect("Failed to create notes table.");
+    }
+
+    // Crear tabla de enlaces de archivos si no existe
+    {
+        let mut conn = db_conn.lock().unwrap();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS file_links (
+                 id INTEGER PRIMARY KEY,
+                 subject_id INTEGER NOT NULL,
+                 url TEXT NOT NULL,
+                 FOREIGN KEY (subject_id) REFERENCES subjects(id)
+             )",
+            [],
+        )
+        .expect("Failed to create file_links table.");
+    }
+
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .app_data(web::Data::new(db_conn.clone()))
@@ -229,8 +462,12 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/login").route(web::post().to(login)))
             .service(web::resource("/add_task").route(web::post().to(add_task)))
             .service(web::resource("/update_task_status").route(web::post().to(update_task_status)))
-            .service(web::resource("/delete_task").route(web::post().to(delete_task)))
-
+            .service(web::resource("/delete_task/{task_id}").route(web::delete().to(delete_task)))
+            .service(web::resource("/add_subject").route(web::post().to(add_subject)))
+            .service(web::resource("/delete_subject/{subject_id}").route(web::delete().to(delete_subject)))
+            .service(web::resource("/add_exam_date").route(web::post().to(add_exam_date)))
+            .service(web::resource("/add_note").route(web::post().to(add_note)))
+            .service(web::resource("/add_file_link").route(web::post().to(add_file_link)))
     })
     .bind("127.0.0.1:8080")?
     .run()
