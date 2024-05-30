@@ -1,4 +1,5 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder, App, HttpServer};
+use actix_cors::Cors;
 use serde::{Serialize, Deserialize};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rusqlite::{Connection, Result};
@@ -455,8 +456,15 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to create file_links table.");
     }
 
-    actix_web::HttpServer::new(move || {
-        actix_web::App::new()
+    HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
+
+        App::new()
+            .wrap(cors) // Añadir el middleware CORS aquí
             .app_data(web::Data::new(db_conn.clone()))
             .service(web::resource("/register").route(web::post().to(register)))
             .service(web::resource("/login").route(web::post().to(login)))

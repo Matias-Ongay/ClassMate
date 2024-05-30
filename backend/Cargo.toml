@@ -14,6 +14,6 @@ rusqlite = { version = "0.25.0", features = ["bundled"] }
 bcrypt = "0.10.0"
 tokio = { version = "1", features = ["full"] }  # Biblioteca para manejar E/S asincrónica
 dotenv = "0.15.0"  # Biblioteca para cargar variables de entorno desde un archivo .env
-
+actix-cors = "0.7.0"
 # Opcional: si quieres trabajar con una base de datos SQLite
 diesel = { version = "2.1.5", features = ["sqlite"] }  # ORM para trabajar con bases de datos en Rust
