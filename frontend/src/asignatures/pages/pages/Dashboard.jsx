@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../../ui/components/Header';
-import Navbar from '../../ui/components/Navbar';
+import Header from '../../../ui/components/Header';
+import Navbar from '../../../ui/components/Navbar';
 import todo from '../assets/Todo.png';
 import asignatures from '../assets/asignatures.png';
 

@@ -4,7 +4,7 @@ import Login from './auth/pages/Login';
 import Register from './auth/pages/Register';
 import Dashboard from './todo/pages/Dashboard';
 import ToDo from './todo/pages/ToDo';
-import Subject from './asignatures/pages/Asignatures';
+import Subject from './asignatures/pages/pages/Asignatures';
 
 
 const App = () => {
