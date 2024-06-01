@@ -16,7 +16,8 @@ struct User {
 struct Task {
     id: i32,
     title: String,
-    status: String, // Puede ser "Pendiente", "En ejecución" o "Terminada"
+    status: String, 
+    note: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,16 +32,23 @@ struct LoginRequest {
     password: String,
 }
 
+
 #[derive(Debug, Deserialize)]
 struct AddTaskRequest {
     title: String,
     status: String,
+    note: Option<String>, // Nota opcional
 }
 
 #[derive(Debug, Deserialize)]
 struct UpdateTaskStatusRequest {
     task_id: i32,
     new_status: String,
+}
+#[derive(Debug, Deserialize)]
+struct UpdateTaskNoteRequest {
+    task_id: i32,
+    new_note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -136,8 +144,9 @@ async fn add_task(
 ) -> impl Responder {
     let title = &add_task_info.title;
     let status = &add_task_info.status;
+    let note = add_task_info.note.as_deref();
 
-    match insert_task(&db_conn, title, status) {
+    match insert_task(&db_conn, title, status, note) {
         Ok(_) => HttpResponse::Ok().body("Tarea agregada exitosamente"),
         Err(_) => HttpResponse::InternalServerError().body("Error al agregar la tarea"),
     }
@@ -232,14 +241,16 @@ fn insert_task(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
     title: &str,
     status: &str,
+    note: Option<&str>,
 ) -> Result<()> {
     let mut conn = db_conn.lock().unwrap();
     conn.execute(
-        "INSERT INTO tasks (title, status) VALUES (?1, ?2)",
-        &[title, status],
+        "INSERT INTO tasks (title, status, note) VALUES (?1, ?2, ?3)",
+        &[title, status, &note.unwrap_or("")],
     )?;
     Ok(())
 }
+
 
 async fn add_subject(
     add_subject_info: web::Json<AddSubjectRequest>,
@@ -365,15 +376,40 @@ fn insert_file_link(
         &[&subject_id.to_string(), url],
     )?;
     Ok(())
+}async fn update_task_note(
+    update_info: web::Json<UpdateTaskNoteRequest>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let task_id = update_info.task_id;
+    let new_note = &update_info.new_note;
+
+    match modify_task_note(&db_conn, task_id, new_note) {
+        Ok(_) => HttpResponse::Ok().body("Nota de la tarea actualizada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al actualizar la nota de la tarea"),
+    }
+}
+
+fn modify_task_note(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    task_id: i32,
+    new_note: &str,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "UPDATE tasks SET note = ?1 WHERE id = ?2",
+        &[new_note, &task_id.to_string()],
+    )?;
+    Ok(())
 }
 async fn get_tasks(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder {
     let conn = db_conn.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT id, title, status FROM tasks").unwrap();
+    let mut stmt = conn.prepare("SELECT id, title, status, note FROM tasks").unwrap();
     let task_iter = stmt.query_map([], |row| {
         Ok(Task {
             id: row.get(0)?,
             title: row.get(1)?,
             status: row.get(2)?,
+            note: row.get(3)?,
         })
     }).unwrap();
 
@@ -381,6 +417,7 @@ async fn get_tasks(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder
 
     HttpResponse::Ok().json(tasks)
 }
+
 async fn get_subjects(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder {
     let conn = db_conn.lock().unwrap();
     let mut stmt = conn.prepare("SELECT id, name FROM subjects").unwrap();
@@ -471,12 +508,14 @@ async fn main() -> std::io::Result<()> {
             "CREATE TABLE IF NOT EXISTS tasks (
                  id INTEGER PRIMARY KEY,
                  title TEXT NOT NULL,
-                 status TEXT NOT NULL
+                 status TEXT NOT NULL,
+                 note TEXT
              )",
             [],
         )
         .expect("Failed to create tasks table.");
     }
+    
 
     // Crear tabla de materias si no existe
     {
@@ -552,6 +591,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/update_task_status").route(web::post().to(update_task_status)))
             .service(web::resource("/delete_task/{task_id}").route(web::delete().to(delete_task)))
             .service(web::resource("/get_tasks").route(web::get().to(get_tasks)))
+            .service(web::resource("/update_task_note").route(web::post().to(update_task_note)))
             .service(web::resource("/add_subject").route(web::post().to(add_subject)))
             .service(web::resource("/delete_subject/{subject_id}").route(web::delete().to(delete_subject)))
             .service(web::resource("/get_subjects").route(web::get().to(get_subjects)))

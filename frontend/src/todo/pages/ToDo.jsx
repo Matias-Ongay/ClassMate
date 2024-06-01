@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../../ui/components/Header';
 import Navbar from '../../ui/components/Navbar';
+import leftArrow from '../assets/arrow left.png';
+import rightArrow from '../assets/arrow right.png';
+import pendingIcon from '../assets/pending.png';
+import inProgressIcon from '../assets/in progress.png';
+import completedIcon from '../assets/completed.png';
 
 const ToDo = () => {
   const [tasks, setTasks] = useState([]);
@@ -11,7 +16,6 @@ const ToDo = () => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    // Fetch tasks from the backend
     const fetchTasks = async () => {
       try {
         const response = await axios.get('http://127.0.0.1:8080/get_tasks');
@@ -57,7 +61,7 @@ const ToDo = () => {
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
-      await axios.post(`http://127.0.0.1:8080/update_task_status`, {
+      await axios.post('http://127.0.0.1:8080/update_task_status', {
         task_id: taskId,
         new_status: newStatus
       });
@@ -74,36 +78,32 @@ const ToDo = () => {
       .map(task => (
         <div 
           key={task.id} 
-          className={`bg-white p-4 rounded-lg shadow-md mb-4 ${selectedTask && selectedTask.id === task.id ? 'expanded' : ''}`}
+          className={`bg-white  p-4 rounded-lg shadow-md mb-4 ${selectedTask && selectedTask.id === task.id ? 'expanded' : ''}`}
           onClick={() => setSelectedTask(selectedTask && selectedTask.id === task.id ? null : task)}
         >
-          <div className="flex justify-between items-center">
-            <span className="text-[#9667E0]">{task.title}</span>
-            {selectedTask && selectedTask.id === task.id && (
-              <>
-                <button onClick={() => handleDelete(task.id)} className="text-red-500">❌</button>
-                <button onClick={() => handleUpdateStatus(task.id, 'Pendiente')} className="text-[#FFA500]">🔄</button>
-                <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#32CD32]">✔️</button>
-              </>
-            )}
+          <div className="flex  items-center">
+            <img src={status === 'Pendiente' ? pendingIcon : status === 'En ejecucion' ? inProgressIcon : completedIcon} alt="Task Icon" className="size-18 mr-2 " />
+            <span className="text-[#9667E0] font-semibold  ">{task.title}</span>
           </div>
           {selectedTask && selectedTask.id === task.id && (
             <div className="mt-4">
-              <p className="text-gray-600">More info about the task...</p>
+              <p className="text-[#9667E0]">More info about the task...</p>
               <div className="flex justify-between mt-4">
                 {currentColumn === 'Tasks In Progress' && (
                   <>
-                    <button onClick={() => handleUpdateStatus(task.id, 'Pendiente')} className="text-[#FFA500]">↩️</button>
-                    <button onClick={() => handleUpdateStatus(task.id, 'Tarea finalizada')} className="text-[#32CD32]">➡️</button>
+                    <button onClick={() => handleUpdateStatus(task.id, 'Pendiente')} className="text-[#FFA500]"><img src={pendingIcon} alt="Pending Icon" className="size-12 inline" /></button>
+                    <button onClick={() => handleUpdateStatus(task.id, 'Tarea finalizada')} className="text-[#32CD32]"><img src={completedIcon} alt="Completed Icon" className="size-12 inline" /></button>
                   </>
                 )}
                 {currentColumn === 'Pending Tasks' && (
-                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#32CD32]">➡️</button>
+                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#32CD32]"><img src={inProgressIcon} alt="In Progress Icon" className="size-12 inline" /></button>
                 )}
                 {currentColumn === 'Completed Tasks' && (
-                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#FFA500]">↩️</button>
+                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#FFA500]"><img src={inProgressIcon} alt="In Progress Icon" className="size-12 inline" /></button>
                 )}
-                <button onClick={() => handleDelete(task.id)} className="text-red-500">Remove Task</button>
+              </div>
+              <div className="flex justify-center mt-4">
+                <button onClick={() => handleDelete(task.id)} className="text-[#9667E0] bg-[#EBD9FC] rounded-lg px-4 py-2">Remove Task</button>
               </div>
             </div>
           )}
@@ -122,18 +122,18 @@ const ToDo = () => {
         <div className="flex justify-between mt-4">
           {currentColumn === 'Pending Tasks' && (
             <>
-              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0] text-bold ">Tasks In Progress ⮕</button>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0] text-bold ">Tasks In Progress <img src={rightArrow} alt="Right Arrow" className="w-4 h-4 inline" /></button>
             </>
           )}
           {currentColumn === 'Tasks In Progress' && (
             <>
-              <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]">⬅ Pending Tasks </button>
-              <button onClick={() => setCurrentColumn('Completed Tasks')} className="text-[#9667E0]">Completed Tasks ⮕</button>
+              <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Pending Tasks </button>
+              <button onClick={() => setCurrentColumn('Completed Tasks')} className="text-[#9667E0]">Completed Tasks <img src={rightArrow} alt="Right Arrow" className="w-4 h-4 inline" /></button>
             </>
           )}
           {currentColumn === 'Completed Tasks' && (
             <>
-              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]">⬅ Tasks In Progress </button>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Tasks In Progress </button>
             </>
           )}
         </div>
