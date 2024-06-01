@@ -6,20 +6,21 @@ import Navbar from '../../ui/components/Navbar';
 const ToDo = () => {
   const [tasks, setTasks] = useState([]);
   const [currentColumn, setCurrentColumn] = useState('Pending Tasks');
+  const [selectedTask, setSelectedTask] = useState(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showModal, setShowModal] = useState(false);
 
-  const fetchTasks = async () => {
-    try {
-      const response = await axios.get('http://127.0.0.1:8080/get_tasks');
-      setTasks(response.data);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  };
-
   useEffect(() => {
     // Fetch tasks from the backend
+    const fetchTasks = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8080/get_tasks');
+        setTasks(response.data);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+    };
+
     fetchTasks();
   }, []);
 
@@ -31,37 +32,81 @@ const ToDo = () => {
     };
 
     try {
-      await axios.post('http://127.0.0.1:8080/add_task', {
+      const response = await axios.post('http://127.0.0.1:8080/add_task', {
         title: newTaskTitle,
         status: statusMap[currentColumn]
       });
 
+      setTasks([...tasks, response.data]);
       setShowModal(false);
       setNewTaskTitle('');
-      fetchTasks(); // Fetch tasks again to update the list
     } catch (error) {
       console.error('Error adding task:', error);
     }
   };
 
-  const handleDelete = (taskId) => {
-    // Delete task from the backend
-    axios.delete(`http://127.0.0.1:8080/delete_task/${taskId}`)
-      .then(() => {
-        setTasks(tasks.filter(task => task.id !== taskId));
-      })
-      .catch(error => console.error('Error deleting task:', error));
+  const handleDelete = async (taskId) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8080/delete_task/${taskId}`);
+      setTasks(tasks.filter(task => task.id !== taskId));
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  const handleUpdateStatus = async (taskId, newStatus) => {
+    try {
+      await axios.post(`http://127.0.0.1:8080/update_task_status`, {
+        task_id: taskId,
+        new_status: newStatus
+      });
+      setTasks(tasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task));
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
   };
 
   const renderTasks = (status) => {
     return tasks
       .filter(task => task.status === status)
       .map(task => (
-        <div key={task.id} className="bg-white p-4 rounded-lg shadow-md mb-4 flex justify-between items-center">
-          <span className="text-[#9667E0]">{task.title}</span>
-          <button onClick={() => handleDelete(task.id)} className="text-red-500">
-            ❌
-          </button>
+        <div 
+          key={task.id} 
+          className={`bg-white p-4 rounded-lg shadow-md mb-4 ${selectedTask && selectedTask.id === task.id ? 'expanded' : ''}`}
+          onClick={() => setSelectedTask(selectedTask && selectedTask.id === task.id ? null : task)}
+        >
+          <div className="flex justify-between items-center">
+            <span className="text-[#9667E0]">{task.title}</span>
+            {selectedTask && selectedTask.id === task.id && (
+              <>
+                <button onClick={() => handleDelete(task.id)} className="text-red-500">❌</button>
+                <button onClick={() => handleUpdateStatus(task.id, 'Pendiente')} className="text-[#FFA500]">🔄</button>
+                <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#32CD32]">✔️</button>
+              </>
+            )}
+          </div>
+          {selectedTask && selectedTask.id === task.id && (
+            <div className="mt-4">
+              <p className="text-gray-600">More info about the task...</p>
+              <div className="flex justify-between mt-4">
+                {currentColumn === 'Tasks In Progress' && (
+                  <>
+                    <button onClick={() => handleUpdateStatus(task.id, 'Pendiente')} className="text-[#FFA500]">↩️</button>
+                    <button onClick={() => handleUpdateStatus(task.id, 'Tarea finalizada')} className="text-[#32CD32]">➡️</button>
+                  </>
+                )}
+                {currentColumn === 'Pending Tasks' && (
+                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#32CD32]">➡️</button>
+                )}
+                {currentColumn === 'Completed Tasks' && (
+                  <button onClick={() => handleUpdateStatus(task.id, 'En ejecucion')} className="text-[#FFA500]">↩️</button>
+                )}
+                <button onClick={() => handleDelete(task.id)} className="text-red-500">Remove Task</button>
+              </div>
+            </div>
+          )}
         </div>
       ));
   };
@@ -75,25 +120,21 @@ const ToDo = () => {
         {currentColumn === 'Tasks In Progress' && renderTasks('En ejecucion')}
         {currentColumn === 'Completed Tasks' && renderTasks('Tarea finalizada')}
         <div className="flex justify-between mt-4">
+          {currentColumn === 'Pending Tasks' && (
+            <>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0] text-bold ">Tasks In Progress ⮕</button>
+            </>
+          )}
           {currentColumn === 'Tasks In Progress' && (
-            <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]">
-              <span className="text-[#9667E0]">{`◀`}</span> Pending Tasks
-            </button>
+            <>
+              <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]">⬅ Pending Tasks </button>
+              <button onClick={() => setCurrentColumn('Completed Tasks')} className="text-[#9667E0]">Completed Tasks ⮕</button>
+            </>
           )}
           {currentColumn === 'Completed Tasks' && (
-            <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]">
-              <span className="text-[#9667E0]">{`◀`}</span> Tasks In Progress
-            </button>
-          )}
-          {currentColumn === 'Pending Tasks' && (
-            <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]">
-              Tasks In Progress <span className="text-[#9667E0]">{`▶`}</span>
-            </button>
-          )}
-          {currentColumn === 'Tasks In Progress' && (
-            <button onClick={() => setCurrentColumn('Completed Tasks')} className="text-[#9667E0]">
-              Completed Tasks <span className="text-[#9667E0]">{`▶`}</span>
-            </button>
+            <>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]">⬅ Tasks In Progress </button>
+            </>
           )}
         </div>
       </div>
