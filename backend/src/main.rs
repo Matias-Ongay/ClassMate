@@ -34,6 +34,7 @@ struct LoginRequest {
 #[derive(Debug, Deserialize)]
 struct AddTaskRequest {
     title: String,
+    status: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -134,13 +135,13 @@ async fn add_task(
     db_conn: web::Data<Arc<Mutex<Connection>>>,
 ) -> impl Responder {
     let title = &add_task_info.title;
+    let status = &add_task_info.status;
 
-    match insert_task(&db_conn, title) {
+    match insert_task(&db_conn, title, status) {
         Ok(_) => HttpResponse::Ok().body("Tarea agregada exitosamente"),
         Err(_) => HttpResponse::InternalServerError().body("Error al agregar la tarea"),
     }
 }
-
 async fn delete_task(
     task_id: web::Path<i32>,
     db_conn: web::Data<Arc<Mutex<Connection>>>,
@@ -173,7 +174,7 @@ async fn update_task_status(
     let new_status = &update_info.new_status;
 
     match new_status.as_str() {
-        "Pendiente" | "En ejecución" | "Tarea finalizada" => {
+        "Pendiente" | "En ejecucion" | "Tarea finalizada" => {
             match modify_task_status(&db_conn, task_id, new_status) {
                 Ok(_) => HttpResponse::Ok().body("Estado de la tarea actualizado exitosamente"),
                 Err(_) => HttpResponse::InternalServerError().body("Error al actualizar el estado de la tarea"),
@@ -230,11 +231,12 @@ fn find_user(
 fn insert_task(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
     title: &str,
+    status: &str,
 ) -> Result<()> {
     let mut conn = db_conn.lock().unwrap();
     conn.execute(
-        "INSERT INTO tasks (title, status) VALUES (?1, 'Pendiente')",
-        &[title],
+        "INSERT INTO tasks (title, status) VALUES (?1, ?2)",
+        &[title, status],
     )?;
     Ok(())
 }
@@ -364,6 +366,21 @@ fn insert_file_link(
     )?;
     Ok(())
 }
+async fn get_tasks(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder {
+    let conn = db_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, title, status FROM tasks").unwrap();
+    let task_iter = stmt.query_map([], |row| {
+        Ok(Task {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            status: row.get(2)?,
+        })
+    }).unwrap();
+
+    let tasks: Vec<Task> = task_iter.map(|task| task.unwrap()).collect();
+
+    HttpResponse::Ok().json(tasks)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -471,6 +488,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/add_task").route(web::post().to(add_task)))
             .service(web::resource("/update_task_status").route(web::post().to(update_task_status)))
             .service(web::resource("/delete_task/{task_id}").route(web::delete().to(delete_task)))
+            .service(web::resource("/get_tasks").route(web::get().to(get_tasks)))
             .service(web::resource("/add_subject").route(web::post().to(add_subject)))
             .service(web::resource("/delete_subject/{subject_id}").route(web::delete().to(delete_subject)))
             .service(web::resource("/add_exam_date").route(web::post().to(add_exam_date)))
