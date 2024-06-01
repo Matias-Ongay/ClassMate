@@ -381,6 +381,69 @@ async fn get_tasks(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder
 
     HttpResponse::Ok().json(tasks)
 }
+async fn get_subjects(db_conn: web::Data<Arc<Mutex<Connection>>>) -> impl Responder {
+    let conn = db_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, name FROM subjects").unwrap();
+    let subject_iter = stmt.query_map([], |row| {
+        Ok(Subject {
+            id: row.get(0)?,
+            name: row.get(1)?,
+        })
+    }).unwrap();
+
+    let subjects: Vec<Subject> = subject_iter.map(|subject| subject.unwrap()).collect();
+
+    HttpResponse::Ok().json(subjects)
+}
+
+async fn get_exam_dates(db_conn: web::Data<Arc<Mutex<Connection>>>, subject_id: web::Path<i32>) -> impl Responder {
+    let conn = db_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, subject_id, date FROM exam_dates WHERE subject_id = ?1").unwrap();
+    let exam_date_iter = stmt.query_map(&[&subject_id.into_inner()], |row| {
+        Ok(ExamDate {
+            id: row.get(0)?,
+            subject_id: row.get(1)?,
+            date: row.get(2)?,
+        })
+    }).unwrap();
+
+    let exam_dates: Vec<ExamDate> = exam_date_iter.map(|exam_date| exam_date.unwrap()).collect();
+
+    HttpResponse::Ok().json(exam_dates)
+}
+
+async fn get_notes(db_conn: web::Data<Arc<Mutex<Connection>>>, subject_id: web::Path<i32>) -> impl Responder {
+    let conn = db_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, subject_id, content FROM notes WHERE subject_id = ?1").unwrap();
+    let note_iter = stmt.query_map(&[&subject_id.into_inner()], |row| {
+        Ok(Note {
+            id: row.get(0)?,
+            subject_id: row.get(1)?,
+            content: row.get(2)?,
+        })
+    }).unwrap();
+
+    let notes: Vec<Note> = note_iter.map(|note| note.unwrap()).collect();
+
+    HttpResponse::Ok().json(notes)
+}
+
+async fn get_file_links(db_conn: web::Data<Arc<Mutex<Connection>>>, subject_id: web::Path<i32>) -> impl Responder {
+    let conn = db_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, subject_id, url FROM file_links WHERE subject_id = ?1").unwrap();
+    let file_link_iter = stmt.query_map(&[&subject_id.into_inner()], |row| {
+        Ok(FileLink {
+            id: row.get(0)?,
+            subject_id: row.get(1)?,
+            url: row.get(2)?,
+        })
+    }).unwrap();
+
+    let file_links: Vec<FileLink> = file_link_iter.map(|file_link| file_link.unwrap()).collect();
+
+    HttpResponse::Ok().json(file_links)
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -479,7 +542,7 @@ async fn main() -> std::io::Result<()> {
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
-
+    
         App::new()
             .wrap(cors) // Añadir el middleware CORS aquí
             .app_data(web::Data::new(db_conn.clone()))
@@ -491,6 +554,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/get_tasks").route(web::get().to(get_tasks)))
             .service(web::resource("/add_subject").route(web::post().to(add_subject)))
             .service(web::resource("/delete_subject/{subject_id}").route(web::delete().to(delete_subject)))
+            .service(web::resource("/get_subjects").route(web::get().to(get_subjects)))
+            .service(web::resource("/get_exam_dates/{subject_id}").route(web::get().to(get_exam_dates)))
+            .service(web::resource("/get_notes/{subject_id}").route(web::get().to(get_notes)))
+            .service(web::resource("/get_file_links/{subject_id}").route(web::get().to(get_file_links)))
             .service(web::resource("/add_exam_date").route(web::post().to(add_exam_date)))
             .service(web::resource("/add_note").route(web::post().to(add_note)))
             .service(web::resource("/add_file_link").route(web::post().to(add_file_link)))
