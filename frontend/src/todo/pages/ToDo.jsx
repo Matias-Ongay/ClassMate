@@ -13,25 +13,24 @@ const ToDo = () => {
   const [currentColumn, setCurrentColumn] = useState('Pending Tasks');
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newNote, setNewNote] = useState('');
   const [showModal, setShowModal] = useState(false);
 
+  const fetchTasks = async () => {
+    const user_id = localStorage.getItem('user_id');
+    if (!user_id) {
+      console.error('User ID is not set');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`http://127.0.0.1:8080/get_tasks/${user_id}`);
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchTasks = async () => {
-      const user_id = localStorage.getItem('user_id');
-      if (!user_id) {
-        console.error('User ID is not set');
-        return;
-      }
-
-      try {
-        const response = await axios.get(`http://127.0.0.1:8080/get_tasks/${user_id}`);
-        setTasks(response.data);
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      }
-    };
-
     fetchTasks();
   }, []);
 
@@ -49,13 +48,13 @@ const ToDo = () => {
     }
 
     try {
-      const response = await axios.post('http://127.0.0.1:8080/add_task', {
+      await axios.post('http://127.0.0.1:8080/add_task', {
         title: newTaskTitle,
         status: statusMap[currentColumn],
         user_id: parseInt(user_id),
       });
 
-      setTasks([...tasks, response.data]);
+      fetchTasks();
       setShowModal(false);
       setNewTaskTitle('');
     } catch (error) {
@@ -66,7 +65,7 @@ const ToDo = () => {
   const handleDelete = async (taskId) => {
     try {
       await axios.delete(`http://127.0.0.1:8080/delete_task/${taskId}`);
-      setTasks(tasks.filter(task => task.id !== taskId));
+      fetchTasks();
       setSelectedTask(null);
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -79,24 +78,10 @@ const ToDo = () => {
         task_id: taskId,
         new_status: newStatus,
       });
-      setTasks(tasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task));
+      fetchTasks();
       setSelectedTask(null);
     } catch (error) {
       console.error('Error updating task status:', error);
-    }
-  };
-
-  const handleUpdateNote = async (taskId) => {
-    try {
-      await axios.post('http://127.0.0.1:8080/update_task_note', {
-        task_id: taskId,
-        new_note: newNote,
-      });
-      setTasks(tasks.map(task => task.id === taskId ? { ...task, note: newNote } : task));
-      setSelectedTask(null);
-      setNewNote('');
-    } catch (error) {
-      console.error('Error updating task note:', error);
     }
   };
 
@@ -115,21 +100,6 @@ const ToDo = () => {
           </div>
           {selectedTask && selectedTask.id === task.id && (
             <div className="mt-4">
-              <p className="text-[#9667E0]">More info about the task...</p>
-              <div className="mt-4">
-                <textarea
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder={task.note || "Add a note..."}
-                  className="w-full p-2 border border-gray-300 rounded"
-                />
-                <button
-                  onClick={() => handleUpdateNote(task.id)}
-                  className="mt-2 px-4 py-2 bg-[#9667E0] text-white rounded"
-                >
-                  Save Note
-                </button>
-              </div>
               <div className="flex justify-between mt-4">
                 {currentColumn === 'Tasks In Progress' && (
                   <>
@@ -158,9 +128,11 @@ const ToDo = () => {
       <Header />
       <div className="p-4 mt-7 mr-3 ml-3 rounded-[10px] bg-[#F2EBFB]">
         <h2 className="text-center text-[#9667E0] text-[30px] font-bold mb-4">{currentColumn}</h2>
-        {currentColumn === 'Pending Tasks' && renderTasks('Pendiente')}
-        {currentColumn === 'Tasks In Progress' && renderTasks('En ejecucion')}
-        {currentColumn === 'Completed Tasks' && renderTasks('Tarea finalizada')}
+        <div className="max-h-[45vh] overflow-y-auto">
+          {currentColumn === 'Pending Tasks' && renderTasks('Pendiente')}
+          {currentColumn === 'Tasks In Progress' && renderTasks('En ejecucion')}
+          {currentColumn === 'Completed Tasks' && renderTasks('Tarea finalizada')}
+        </div>
         <div className="flex justify-between mt-4">
           {currentColumn === 'Pending Tasks' && (
             <>
