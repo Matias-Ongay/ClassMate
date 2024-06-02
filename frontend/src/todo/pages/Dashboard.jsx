@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../ui/components/Header';
 import Navbar from '../../ui/components/Navbar';
@@ -6,10 +6,19 @@ import todo from '../assets/Todo.png';
 import asignatures from '../assets/asignatures.png';
 
 const Dashboard = () => {
+  const [username, setUsername] = useState('');
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
+
   const handleLogout = () => {
-    // Aquí puedes agregar la lógica para cerrar sesión
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
     navigate('/login');
   };
 
@@ -18,7 +27,7 @@ const Dashboard = () => {
       <Header />
       <div className="p-4 space-y-4">
         <div className="flex justify-between items-center">
-          <span className="text-[#9667E0] font-bold bg-[#EBD9FC] border border-[#9667E0] rounded-[10px] px-4 py-2">Ongaymatias@gmail.com</span>
+          <span className="text-[#9667E0] font-bold bg-[#EBD9FC] border border-[#9667E0] rounded-[10px] px-4 py-2">{username}</span>
           <button 
             onClick={handleLogout} 
             className="text-[#9667E0] font-bold bg-[#EBD9FC] border border-[#9667E0] rounded-[10px] px-4 py-2"

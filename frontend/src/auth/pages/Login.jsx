@@ -17,9 +17,8 @@ const Login = () => {
         password,
       });
       if (response.status === 200) {
-        const { user_id } = response.data; // Extraer el user_id de la respuesta
-        localStorage.setItem('user_id', user_id);
-        console.log('User ID:', user_id);
+        localStorage.setItem('user_id', response.data.user_id);
+        localStorage.setItem('username', username);
         navigate('/dashboard');
       } else {
         setError('Invalid login credentials');

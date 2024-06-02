@@ -16,8 +16,9 @@ struct User {
 struct Task {
     id: i32,
     title: String,
-    status: String, 
+    status: String,
     note: Option<String>,
+    user_id: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,7 +38,7 @@ struct AddTaskRequest {
     title: String,
     status: String,
     note: Option<String>,
-    user_id: i32, // Añadir user_id
+    user_id: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,7 +133,6 @@ async fn login(
     match find_user(&db_conn, username) {
         Ok(user) => {
             if verify(password, &user.password_hash).unwrap_or(false) {
-                // Devolver el user_id en la respuesta
                 HttpResponse::Ok().json(serde_json::json!({ "message": "Inicio de sesión exitoso", "user_id": user.id }))
             } else {
                 HttpResponse::Unauthorized().body("Credenciales inválidas")
@@ -141,7 +141,6 @@ async fn login(
         Err(_) => HttpResponse::Unauthorized().body("Credenciales inválidas"),
     }
 }
-
 
 async fn add_task(
     add_task_info: web::Json<AddTaskRequest>,
@@ -330,7 +329,7 @@ fn remove_subject(
     let mut conn = db_conn.lock().unwrap();
     conn.execute(
         "DELETE FROM subjects WHERE id = ?1",
-        &[&subject_id.to_string()],
+        &[&subject_id],
     )?;
     Ok(())
 }
@@ -415,13 +414,14 @@ fn insert_file_link(
 
 async fn get_tasks(db_conn: web::Data<Arc<Mutex<Connection>>>, user_id: web::Path<i32>) -> impl Responder {
     let conn = db_conn.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT id, title, status, note FROM tasks WHERE user_id = ?1").unwrap();
+    let mut stmt = conn.prepare("SELECT id, title, status, note, user_id FROM tasks WHERE user_id = ?1").unwrap();
     let task_iter = stmt.query_map(&[&user_id.into_inner()], |row| {
         Ok(Task {
             id: row.get(0)?,
             title: row.get(1)?,
             status: row.get(2)?,
             note: row.get(3)?,
+            user_id: row.get(4)?,
         })
     }).unwrap();
 

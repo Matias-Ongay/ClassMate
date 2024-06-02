@@ -15,7 +15,7 @@ const Navbar = () => {
         <img src={home} alt="icono de home" />
         
       </button>
-      <button className="text-[#9667E0]" onClick={() => navigate('/dashboard')}>
+      <button className="text-[#9667E0]" onClick={() => navigate('/asignatures')}>
         <img src={asignaturesHome} alt="icono de asignaturas" />
       </button>
       
