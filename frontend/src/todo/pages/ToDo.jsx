@@ -13,12 +13,19 @@ const ToDo = () => {
   const [currentColumn, setCurrentColumn] = useState('Pending Tasks');
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newNote, setNewNote] = useState('');
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
+      const user_id = localStorage.getItem('user_id');
+      if (!user_id) {
+        console.error('User ID is not set');
+        return;
+      }
+
       try {
-        const response = await axios.get('http://127.0.0.1:8080/get_tasks');
+        const response = await axios.get(`http://127.0.0.1:8080/get_tasks/${user_id}`);
         setTasks(response.data);
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -35,10 +42,17 @@ const ToDo = () => {
       'Completed Tasks': 'Tarea finalizada'
     };
 
+    const user_id = localStorage.getItem('user_id');
+    if (!user_id) {
+      console.error('User ID is not set');
+      return;
+    }
+
     try {
       const response = await axios.post('http://127.0.0.1:8080/add_task', {
         title: newTaskTitle,
-        status: statusMap[currentColumn]
+        status: statusMap[currentColumn],
+        user_id: parseInt(user_id),
       });
 
       setTasks([...tasks, response.data]);
@@ -63,12 +77,26 @@ const ToDo = () => {
     try {
       await axios.post('http://127.0.0.1:8080/update_task_status', {
         task_id: taskId,
-        new_status: newStatus
+        new_status: newStatus,
       });
       setTasks(tasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task));
       setSelectedTask(null);
     } catch (error) {
       console.error('Error updating task status:', error);
+    }
+  };
+
+  const handleUpdateNote = async (taskId) => {
+    try {
+      await axios.post('http://127.0.0.1:8080/update_task_note', {
+        task_id: taskId,
+        new_note: newNote,
+      });
+      setTasks(tasks.map(task => task.id === taskId ? { ...task, note: newNote } : task));
+      setSelectedTask(null);
+      setNewNote('');
+    } catch (error) {
+      console.error('Error updating task note:', error);
     }
   };
 
@@ -78,16 +106,30 @@ const ToDo = () => {
       .map(task => (
         <div 
           key={task.id} 
-          className={`bg-white  p-4 rounded-lg shadow-md mb-4 ${selectedTask && selectedTask.id === task.id ? 'expanded' : ''}`}
+          className={`bg-white p-4 rounded-lg shadow-md mb-4 ${selectedTask && selectedTask.id === task.id ? 'expanded' : ''}`}
           onClick={() => setSelectedTask(selectedTask && selectedTask.id === task.id ? null : task)}
         >
-          <div className="flex  items-center">
+          <div className="flex items-center">
             <img src={status === 'Pendiente' ? pendingIcon : status === 'En ejecucion' ? inProgressIcon : completedIcon} alt="Task Icon" className="size-18 mr-2 " />
-            <span className="text-[#9667E0] font-semibold  ">{task.title}</span>
+            <span className="text-[#9667E0] font-semibold">{task.title}</span>
           </div>
           {selectedTask && selectedTask.id === task.id && (
             <div className="mt-4">
               <p className="text-[#9667E0]">More info about the task...</p>
+              <div className="mt-4">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder={task.note || "Add a note..."}
+                  className="w-full p-2 border border-gray-300 rounded"
+                />
+                <button
+                  onClick={() => handleUpdateNote(task.id)}
+                  className="mt-2 px-4 py-2 bg-[#9667E0] text-white rounded"
+                >
+                  Save Note
+                </button>
+              </div>
               <div className="flex justify-between mt-4">
                 {currentColumn === 'Tasks In Progress' && (
                   <>
@@ -122,23 +164,23 @@ const ToDo = () => {
         <div className="flex justify-between mt-4">
           {currentColumn === 'Pending Tasks' && (
             <>
-              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0] text-bold ">Tasks In Progress <img src={rightArrow} alt="Right Arrow" className="w-4 h-4 inline" /></button>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0] text-bold">Tasks In Progress <img src={rightArrow} alt="Right Arrow" className="w-4 h-4 inline" /></button>
             </>
           )}
           {currentColumn === 'Tasks In Progress' && (
             <>
-              <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Pending Tasks </button>
+              <button onClick={() => setCurrentColumn('Pending Tasks')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Pending Tasks</button>
               <button onClick={() => setCurrentColumn('Completed Tasks')} className="text-[#9667E0]">Completed Tasks <img src={rightArrow} alt="Right Arrow" className="w-4 h-4 inline" /></button>
             </>
           )}
           {currentColumn === 'Completed Tasks' && (
             <>
-              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Tasks In Progress </button>
+              <button onClick={() => setCurrentColumn('Tasks In Progress')} className="text-[#9667E0]"><img src={leftArrow} alt="Left Arrow" className="w-4 h-4 inline" /> Tasks In Progress</button>
             </>
           )}
         </div>
       </div>
-      <div className="p-4 mt-7 mr-3 ml-3 rounded-[10px] ">
+      <div className="p-4 mt-7 mr-3 ml-3 rounded-[10px]">
         <button
           onClick={() => setShowModal(true)}
           className="w-full px-4 py-3 font-semibold text-white bg-[#9667E0] rounded-[10px] text-[#FBFAFF] mt-4 shadow-md"
@@ -146,19 +188,18 @@ const ToDo = () => {
           Add Task
         </button>
       </div>
-      
       <Navbar />
 
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 ">
-          <div className=" p-8 rounded-lg shadow-lg bg-[#F2EBFB] ">
-            <h2 className="text-2xl font-bold mb-4 text-center text-[#9667E0]  ">Add New Task</h2>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="p-8 rounded-lg shadow-lg bg-[#F2EBFB]">
+            <h2 className="text-2xl font-bold mb-4 text-center text-[#9667E0]">Add New Task</h2>
             <input
               type="text"
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               placeholder="Task Title"
-              className="w-full px-4 py-2 border-1-[#9667E0]  rounded-lg mb-4"
+              className="w-full px-4 py-2 border-1-[#9667E0] rounded-lg mb-4"
             />
             <div className="flex justify-center">
               <button
