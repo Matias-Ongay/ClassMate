@@ -66,6 +66,15 @@ const Subject = () => {
     }
   };
 
+  const deleteNote = async (noteId) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8080/delete_note/${noteId}`);
+      fetchNotes(currentSubject.id); // Refresh the list of notes
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSubjects();
   }, []);
@@ -88,6 +97,8 @@ const Subject = () => {
       if (currentSubject && currentSubject.id === subjectId) {
         setCurrentSubject(null);
         setExamDates([]);
+        setNotes([]);
+        setShowNotes(false);
       }
     } catch (error) {
       console.error('Error deleting subject:', error);
@@ -139,6 +150,7 @@ const Subject = () => {
             onBackToDates={() => setShowNotes(false)} 
             onDelete={() => handleDelete(currentSubject.id)}
             onAddNote={addNote}
+            onDeleteNote={deleteNote}
           />
         )}
       </div>

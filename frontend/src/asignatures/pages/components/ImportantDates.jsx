@@ -34,12 +34,16 @@ const ImportantDates = ({ examDates, onDelete, onBackToList, onShowNotes, onAddD
       <button onClick={handleAddDate} className="px-4 py-2 bg-[#9667E0] text-white rounded-lg mb-4">
         Add Date
       </button>
-      <button className="text-blue-500 mt-4 flex items-center" onClick={onShowNotes}>
-        Notes <span className="ml-2 text-[#9667E0]">{`➔`}</span>
-      </button>
+      <div className="flex justify-between">
       <button onClick={onBackToList} className="text-[#9667E0] mt-2">
         <span className="text-[#9667E0]">{`◀`}</span> Back to list
       </button>
+      <button className="text-[#9667E0] mt-4 flex items-center" onClick={onShowNotes}>
+        Notes
+        <span className="ml-2 text-[#9667E0]">{`➔`}</span> 
+      </button>
+      </div>
+      
     </div>
   );
 };

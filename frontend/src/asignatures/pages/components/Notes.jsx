@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Notes = ({ notes, onBackToDates, onDelete, onAddNote }) => {
+const Notes = ({ notes, onBackToDates, onDelete, onAddNote, onDeleteNote }) => {
   const [newNote, setNewNote] = useState('');
 
   const handleAddNote = () => {
@@ -20,8 +20,11 @@ const Notes = ({ notes, onBackToDates, onDelete, onAddNote }) => {
       </div>
       <ul className="mb-4">
         {notes.map(note => (
-          <li key={note.id}>
+          <li key={note.id} className="flex justify-between items-center">
             <a href={note.url} className="text-[#9667E0]">{note.content}</a>
+            <button onClick={() => onDeleteNote(note.id)} className="text-red-500">
+              ❌
+            </button>
           </li>
         ))}
       </ul>
@@ -34,12 +37,11 @@ const Notes = ({ notes, onBackToDates, onDelete, onAddNote }) => {
       <button onClick={handleAddNote} className="px-4 py-2 bg-[#9667E0] text-white rounded-lg mb-4">
         Add Note
       </button>
-      <button className="text-blue-500 mt-4 flex items-center" onClick={onBackToDates}>
-        Dates <span className="ml-2 text-[#9667E0]">{`➔`}</span>
-      </button>
-      <button onClick={onBackToDates} className="text-[#9667E0] mt-2">
-        <span className="text-[#9667E0]">{`◀`}</span> Back to Dates
-      </button>
+      <div className="flex justify-between">
+        <button onClick={onBackToDates} className="text-[#9667E0]">
+          <span className="text-[#9667E0]">{`◀`}</span> Back to Dates
+        </button>
+      </div>
     </div>
   );
 };
