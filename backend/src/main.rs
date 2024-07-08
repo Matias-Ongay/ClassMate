@@ -366,7 +366,29 @@ async fn get_file_links(
 
     HttpResponse::Ok().json(file_links)
 }
+async fn delete_note(
+    note_id: web::Path<i32>,
+    db_conn: web::Data<Arc<Mutex<Connection>>>,
+) -> impl Responder {
+    let id = note_id.into_inner();
 
+    match remove_note(&db_conn, id) {
+        Ok(_) => HttpResponse::Ok().body("Nota eliminada exitosamente"),
+        Err(_) => HttpResponse::InternalServerError().body("Error al eliminar la nota"),
+    }
+}
+
+fn remove_note(
+    db_conn: &web::Data<Arc<Mutex<Connection>>>,
+    note_id: i32,
+) -> Result<()> {
+    let mut conn = db_conn.lock().unwrap();
+    conn.execute(
+        "DELETE FROM notes WHERE id = ?1",
+        &[&note_id.to_string()],
+    )?;
+    Ok(())
+}
 // Database modification functions
 fn insert_user(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
@@ -471,11 +493,24 @@ fn remove_subject(
 ) -> Result<()> {
     let mut conn = db_conn.lock().unwrap();
     conn.execute(
+        "DELETE FROM notes WHERE subject_id = ?1",
+        &[&subject_id.to_string()],
+    )?;
+    conn.execute(
+        "DELETE FROM exam_dates WHERE subject_id = ?1",
+        &[&subject_id.to_string()],
+    )?;
+    conn.execute(
+        "DELETE FROM file_links WHERE subject_id = ?1",
+        &[&subject_id.to_string()],
+    )?;
+    conn.execute(
         "DELETE FROM subjects WHERE id = ?1",
-        &[&subject_id],
+        &[&subject_id.to_string()],
     )?;
     Ok(())
 }
+
 
 fn insert_exam_date(
     db_conn: &web::Data<Arc<Mutex<Connection>>>,
@@ -625,7 +660,7 @@ async fn main() -> std::io::Result<()> {
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
-
+    
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(db_conn.clone()))
@@ -645,8 +680,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/add_exam_date").route(web::post().to(add_exam_date)))
             .service(web::resource("/add_note").route(web::post().to(add_note)))
             .service(web::resource("/add_file_link").route(web::post().to(add_file_link)))
+            .service(web::resource("/delete_note/{note_id}").route(web::delete().to(delete_note))) // Nueva ruta
     })
     .bind("127.0.0.1:8080")?
     .run()
     .await
+    
 }

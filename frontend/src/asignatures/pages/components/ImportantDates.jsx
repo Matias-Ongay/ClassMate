@@ -14,9 +14,7 @@ const ImportantDates = ({ examDates, onDelete, onBackToList, onShowNotes, onAddD
     <div className="bg-white p-4 rounded-lg shadow-md mb-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-[#9667E0] text-[20px] font-bold">Important Dates</h3>
-        <button onClick={onDelete} className="text-red-500">
-          ❌
-        </button>
+        
       </div>
       <ul className="mb-4">
         {examDates.map(date => (
